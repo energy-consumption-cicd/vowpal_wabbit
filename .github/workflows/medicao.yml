@@ -1,0 +1,66 @@
+name: Medição de Energia — VowpalWabbit
+
+on:
+  workflow_dispatch:   # disparo manual pelo botão no GitHub Actions
+  push:
+    branches:
+      - medicao        # dispara automaticamente apenas nessa branch separada
+
+jobs:
+  medicao:
+    runs-on: [self-hosted, linux]
+
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+        with:
+          submodules: false   # submodules já estão na imagem Docker
+
+      - name: Verificar disponibilidade do RAPL
+        run: |
+          if [ ! -d /sys/class/powercap/intel-rapl ]; then
+            echo "❌ RAPL não disponível neste runner"
+            exit 1
+          fi
+          echo "✅ Domínios RAPL disponíveis:"
+          ls /sys/class/powercap/intel-rapl/
+
+      - name: Verificar imagem Docker
+        run: |
+          if ! docker image inspect vowpal-wabbit-medicao &>/dev/null; then
+            echo "❌ Imagem 'vowpal-wabbit-medicao' não encontrada no runner."
+            echo "   Execute manualmente na tesla antes de disparar este workflow:"
+            echo "   docker build -t vowpal-wabbit-medicao -f ~/experimentos/medicao/repositorios/vowpal_wabbit/Dockerfile ."
+            exit 1
+          fi
+          echo "✅ Imagem Docker encontrada."
+          docker image inspect vowpal-wabbit-medicao --format '{{.Created}}'
+
+      - name: Run de validação (run_00)
+        run: |
+          bash $HOME/experimentos/medicao/repositorios/vowpal_wabbit/run_pipeline.sh 0
+
+      - name: Executar 10 runs de medição
+        run: |
+          for i in $(seq 1 10); do
+            echo "::group::Run $i de 10"
+            bash $HOME/experimentos/medicao/repositorios/vowpal_wabbit/run_pipeline.sh $i
+            echo "::endgroup::"
+            if [ $i -lt 10 ]; then
+              echo "⏳ Repouso entre runs (120s)..."
+              sleep 120
+            fi
+          done
+
+      - name: Calcular medianas
+        run: |
+          python3 $HOME/experimentos/medicao/scripts/aggregate.py \
+            $HOME/experimentos/medicao/resultados/vowpal_wabbit/runs \
+            $HOME/experimentos/medicao/resultados/vowpal_wabbit/summary.csv
+
+      - name: Upload dos resultados
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultados-vowpal-wabbit-${{ github.run_number }}
+          path: ${{ env.HOME }}/experimentos/medicao/resultados/vowpal_wabbit/
+          retention-days: 90
