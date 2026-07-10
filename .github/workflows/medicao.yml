@@ -188,5 +188,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: resultados-vowpal-wabbit-${{ github.run_number }}
-          path: ${{ env.HOME_DIR }}/experimentos/medicao/resultados/vowpal_wabbit/
+          # NOTA_FIDELIDADE.md é documento de consulta interna, local na tesla: fica
+          # fora do artefato. A exclusão (!) vem depois do include; como só há um
+          # include, a raiz do artefato continua resultados/vowpal_wabbit/ e a
+          # estrutura interna não muda.
+          path: |
+            ${{ env.HOME_DIR }}/experimentos/medicao/resultados/vowpal_wabbit/
+            !${{ env.HOME_DIR }}/experimentos/medicao/resultados/vowpal_wabbit/NOTA_FIDELIDADE.md
           retention-days: 90
