@@ -22,7 +22,7 @@ case "$STAGE" in
       -DVW_BOOST_MATH_SYS_DEP=Off \
       -DVW_INSTALL=Off \
       -DWARNINGS=On \
-      -DWARNING_AS_ERRORR=On \
+      -DWARNING_AS_ERROR=On \
       -DVW_CXX_STANDARD=17 \
       -DVW_SIMD_INV_SQRT=OFF \
       -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
