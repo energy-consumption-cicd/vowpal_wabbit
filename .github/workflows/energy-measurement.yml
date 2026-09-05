@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       campaign:
-        description: "validation = run 0 only (smoke test) | full = runs 1..10 + median"
+        description: "validation = run 0 only (smoke test) | full = 2 warm-ups + runs 1..10 + median"
         type: choice
         required: true
         default: validation
@@ -119,28 +119,32 @@ jobs:
             return 0
           }
 
-          # Discarded warm-up convention: 11 runs, median over the 10 valid ones.
+          # Discarded warm-up convention: two consecutive warm-ups, then the median
+          # over the 10 valid runs. Compiled build stage: one warm-up did not exhaust
+          # the first-touch effect in the git campaign.
           PENDING=0
           for i in $(seq 1 10); do
             validate_csv "$RESULTS_DIR/run_$(printf '%02d' "$i").csv" || PENDING=$((PENDING+1))
           done
           if [ "$PENDING" -gt 0 ]; then
-            echo "::group::Warm-up (discarded from analysis)"
-            echo "$PENDING pending run(s) - executing warm-up before official runs"
             mkdir -p "$RESULTS_DIR/warmup"
-            bash "$PIPELINE" 0
-            mv -f "$RESULTS_DIR/run_00.csv" "$RESULTS_DIR/warmup/run_warmup.csv"
-            warn_user_sys "$RESULTS_DIR/warmup/run_warmup.csv" "warm-up"
+            for w in 1 2; do
+              echo "::group::Warm-up $w of 2 (discarded from analysis)"
+              echo "$PENDING pending run(s) - executing warm-up $w of 2 before official runs"
+              bash "$PIPELINE" 0
+              mv -f "$RESULTS_DIR/run_00.csv" "$RESULTS_DIR/warmup/run_warmup_$w.csv"
+              warn_user_sys "$RESULTS_DIR/warmup/run_warmup_$w.csv" "warm-up $w"
+              echo "::endgroup::"
+              echo "Post-warm-up $w rest (120s)..."
+              sleep 120
+            done
             {
-              echo "## Warm-up executed and DISCARDED (not in the median)"
-              echo "- $PENDING pending run(s) this session; CSV at \`runs/warmup/run_warmup.csv\` (overwritten each session)"
+              echo "## Two warm-ups executed and DISCARDED (not in the median)"
+              echo "- $PENDING pending run(s) this session; CSVs at \`runs/warmup/run_warmup_1.csv\` and \`runs/warmup/run_warmup_2.csv\` (overwritten each session)"
             } >> "$GITHUB_STEP_SUMMARY"
-            echo "::endgroup::"
-            echo "Post-warm-up rest (120s)..."
-            sleep 120
           else
-            echo "Campaign already complete (10 valid runs) - warm-up not needed"
-            echo "## Warm-up skipped - campaign already complete" >> "$GITHUB_STEP_SUMMARY"
+            echo "Campaign already complete (10 valid runs) - warm-ups not needed"
+            echo "## Warm-ups skipped - campaign already complete" >> "$GITHUB_STEP_SUMMARY"
           fi
 
           echo "## Execution (full mode) - skip-if-exists" >> "$GITHUB_STEP_SUMMARY"
