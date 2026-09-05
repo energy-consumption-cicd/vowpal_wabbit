@@ -163,7 +163,7 @@ measure_stage() {
   ini_ram=$(read_rapl ram)
 
   /usr/bin/time -f "%e" -o "$TIME_FILE" \
-    docker run --rm --privileged \
+    docker run --rm --privileged --network none \
       -v "$MEDICAO_DIR:/medicao:ro" \
       -v "$timing_dir:/timing" \
       -e "STAGE=$stage" \
