@@ -64,9 +64,11 @@ RUN mkdir -p /project/big_tests/dataSets/URLRep.dir && \
     wget -nv -P /project/big_tests/dataSets/URLRep.dir \
       https://archive.ics.uci.edu/ml/machine-learning-databases/url/url_svmlight.tar.gz
 
+# Upstream certificate expired 2026-08-28; integrity enforced via sha256 instead.
 RUN mkdir -p /project/big_tests/dataSets/movielens.dir && \
-    wget -nv -P /project/big_tests/dataSets/movielens.dir \
-      http://files.grouplens.org/datasets/movielens/ml-1m.zip
+    wget -nv --no-check-certificate -P /project/big_tests/dataSets/movielens.dir \
+      http://files.grouplens.org/datasets/movielens/ml-1m.zip && \
+    echo "a6898adb50b9ca05aa231689da44c217cb524e7ebd39d264c56e2832f2c54e20  /project/big_tests/dataSets/movielens.dir/ml-1m.zip" | sha256sum -c -
 
 RUN mkdir -p /project/big_tests/dataSets/OCR.dir && \
     wget -nv -P /project/big_tests/dataSets/OCR.dir \
